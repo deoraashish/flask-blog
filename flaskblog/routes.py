@@ -7,6 +7,7 @@ from flaskblog.forms import RegistrationFrom, LoginForm, UpdateAccountForm, Post
 from flaskblog.models import User, Post
 from flask_login import login_user, current_user, logout_user, login_required
 
+
 # posts = [
 #     {
 #         'title': 'Article 1',
@@ -26,8 +27,19 @@ from flask_login import login_user, current_user, logout_user, login_required
 @app.route("/")
 @app.route("/home")
 def home():
-    posts = Post.query.all()
+    page = request.args.get('page', 1, type=int)  # reading URL params
+    posts = Post.query.order_by(Post.date_posted.desc()).paginate(page=page, per_page=2)  # setting page size to 5
     return render_template('index.html', posts=posts)
+
+
+@app.route("/user/<string:username>")
+def user_posts(username):
+    user = User.query.filter_by(username=username).first_or_404()
+    page = request.args.get('page', 1, type=int)  # reading URL params
+    posts = Post.query.filter_by(author=user)\
+            .order_by(Post.date_posted.desc())\
+            .paginate(page=page, per_page=2)  # setting page size to 5
+    return render_template('user_post.html', posts=posts, user=user)
 
 
 @app.route("/about")
@@ -76,7 +88,7 @@ def save_picture(form_picture):
     random_hex = secrets.token_hex(8)
     _, f_ext = os.path.splitext(form_picture.filename)
     picture_fn = random_hex + f_ext
-    picture_path = os.path.join(app.root_path,'static/profile_pics', picture_fn)
+    picture_path = os.path.join(app.root_path, 'static/profile_pics', picture_fn)
     output_size = (125, 125)
     i = Image.open(form_picture)
     i.thumbnail(output_size)
@@ -157,4 +169,3 @@ def delete_post(post_id):
     db.session.commit()
     flash('Your post has been deleted!', 'success')
     return redirect(url_for('home'))
-
